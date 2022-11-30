@@ -1,15 +1,41 @@
 <script setup>
-import { ref } from 'vue';
-const taskList = ref(['Task 1', 'Task 2'])
+import { ref, watch, computed, watchEffect } from 'vue';
+const taskList = ref(['pineapple', 'banana', 'mango', 'graps', 'alomonds', 'apple', 'coconut']);
 const task = ref('');
-const taskUpdateId = ref(-1);
+const taskIndex = ref(-1);
 const isUpdateItem = ref(false);
 const inputRef = ref(null);
+const searchText = ref('');
+const filterList = ref(taskList.value);
+
+// watch([searchText,taskList.value], () => {
+//  filterList.value=[...taskList.value].filter(t => {
+//    t = t.toLowerCase();
+//    console.log(t)
+//     return t.indexOf(searchText.value) > -1;
+//  })
+
+// })
+
+
+watchEffect(() => {
+  filterList.value = [...taskList.value].filter(t => {
+    t = t.toLowerCase();
+    console.log(t)
+    return t.indexOf(searchText.value) > -1;
+  })
+})
+
+
+const clearTask = () => {
+  task.value = '';
+  taskIndex.value = -1;
+  isUpdateItem.value = false;
+}
 
 const addTask = () => {
   if (task.value) {
     taskList.value.push(task.value);
-    console.log(taskList.value);
     task.value = '';
   }
   else {
@@ -17,66 +43,60 @@ const addTask = () => {
   }
 }
 
-const deleteTask = (tasktoDelete) => {
-  taskList.value = taskList.value.filter(t => t !== tasktoDelete)
-  console.log(taskList.value)
+const deleteTask = (taskToDelete) => {
+  taskList.value = taskList.value.filter(t => t !== taskToDelete)
 }
 
-const updateTask = (updateTaskId) => {
+const updateTask = (updateTask) => {
+  console.log(updateTask)
   isUpdateItem.value = true;
-  task.value = taskList.value[updateTaskId];
-  taskUpdateId.value = updateTaskId;
-
-  setInterval(() => {
-    inputRef.value.focus();
-  }, 1);
+  task.value = updateTask;
+  taskIndex.value = taskList.value.indexOf(updateTask);
+  inputRef.value.focus();
 }
 
 const handleUpdate = () => {
-
-  if (taskList.value[taskUpdateId.value]) {
-    taskList.value[taskUpdateId.value] = task.value;
-    task.value = '';
-    taskUpdateId.value = -1;
-    isUpdateItem.value = false;
+  if (taskList.value[taskIndex.value]) {
+    taskList.value[taskIndex.value] = task.value;
+    clearTask();
   }
   else {
     alert("Task already deleted");
-    task.value = '';
-    taskUpdateId.value = -1;
-    isUpdateItem.value = false;
+    clearTask();
   }
 }
 
-const handleClose = () => {
-  task.value = '';
-  taskUpdateId.value = -1;
-  isUpdateItem.value = false;
-}
 
 </script>
 
 <template>
   <div>
     <h1>To-Do List</h1>
-    <div class="update-item" v-show="isUpdateItem">
-      <input type="text" v-model="task" ref="inputRef" />
-      <button @click="handleUpdate">Update</button>
-      <button @click="handleClose">Close</button>
-    </div>
-    <div v-show="!isUpdateItem" class="add-item">
-      <input type="text" v-model="task" />
-      <button @click="addTask">Add Task</button>
-    </div>
+    <form @submit.prevent>
+      <input v-model="task" type="text" ref="inputRef" />
+      <button
+        @click="isUpdateItem ? handleUpdate() : addTask()">{{ isUpdateItem ? 'Update Task' : 'Add Task' }}</button>
+      <button v-show="isUpdateItem" @click="clearTask">close</button>
+    </form>
     <div class="item-list">
+      {{ filterList }}
       <h2>Your Tasks</h2>
-      <div v-for="(task, id) in taskList" :key="id">
+      <div>
+        Sort Task :
+        <button @click="taskList.sort()"> Asc </button>
+        <button @click="taskList.sort().reverse()"> Desc </button>
+        <button @click=""> None </button>
+      </div>
+
+      <input type="text" v-model="searchText" placeholder="Search Tasks ...." />
+      <div v-for="(task, index) in filterList" :key="index">
         <div class="item">
           <h3 id="item-name">{{ task }}</h3>
-          <button @click="updateTask(id)">Update</button>
+          <button @click="updateTask(task)">Update</button>
           <button @click="deleteTask(task)">Delete</button>
         </div>
       </div>
+      <div>Total Tasks: {{ filterList.length }}</div>
     </div>
   </div>
 
@@ -98,7 +118,7 @@ const handleClose = () => {
   border-radius: 1.5rem;
 }
 
-.update-item button {
+button {
   margin: .5rem;
 }
 
