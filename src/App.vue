@@ -1,30 +1,33 @@
 <script setup>
 import { ref, watch, computed, watchEffect } from 'vue';
-const taskList = ref(['pineapple', 'banana', 'mango', 'graps', 'alomonds', 'apple', 'coconut']);
+const taskList = ref(['pineapple', 'banana', 'mango', 'grapes', 'alomonds', 'apple', 'coconut']);
 const task = ref('');
 const taskIndex = ref(-1);
 const isUpdateItem = ref(false);
 const inputRef = ref(null);
 const searchText = ref('');
 const filterList = ref(taskList.value);
+const sortOrder = ref('none');
 
-// watch([searchText,taskList.value], () => {
-//  filterList.value=[...taskList.value].filter(t => {
-//    t = t.toLowerCase();
-//    console.log(t)
-//     return t.indexOf(searchText.value) > -1;
-//  })
-
-// })
-
-
-watchEffect(() => {
+watch([searchText, taskList], () => {
+  console.log('object');
   filterList.value = [...taskList.value].filter(t => {
     t = t.toLowerCase();
-    console.log(t)
     return t.indexOf(searchText.value) > -1;
   })
-})
+}, { deep: true })
+
+
+
+
+// watchEffect(() => {
+//   filterList.value = [...taskList.value].filter(t => {
+//     t = t.toLowerCase();
+//     return t.indexOf(searchText.value.toLowerCase()) > -1;
+//   })
+//   sortList(sortOrder);
+// })
+
 
 
 const clearTask = () => {
@@ -36,6 +39,8 @@ const clearTask = () => {
 const addTask = () => {
   if (task.value) {
     taskList.value.push(task.value);
+    searchText.value = '';
+    sortList(sortOrder.value);
     task.value = '';
   }
   else {
@@ -58,11 +63,26 @@ const updateTask = (updateTask) => {
 const handleUpdate = () => {
   if (taskList.value[taskIndex.value]) {
     taskList.value[taskIndex.value] = task.value;
+    searchText.value = '';
     clearTask();
   }
   else {
     alert("Task already deleted");
     clearTask();
+  }
+}
+
+const sortList = (sortOrder) => {
+  if (sortOrder === 'asc') {
+    console.log('called');
+    filterList.value = [...taskList.value].sort();
+    console.log(filterList.value);
+  }
+  if (sortOrder === 'desc') {
+    filterList.value = [...taskList.value].sort().reverse();
+  }
+  if (sortOrder === 'none') {
+    filterList.value = taskList.value;
   }
 }
 
@@ -83,9 +103,9 @@ const handleUpdate = () => {
       <h2>Your Tasks</h2>
       <div>
         Sort Task :
-        <button @click="taskList.sort()"> Asc </button>
-        <button @click="taskList.sort().reverse()"> Desc </button>
-        <button @click=""> None </button>
+        <button @click="sortOrder = 'asc'; sortList(sortOrder)">Asc</button>
+        <button @click="sortOrder = 'desc'; sortList(sortOrder)"> Desc </button>
+        <button @click="filterList = taskList"> None </button>
       </div>
 
       <input type="text" v-model="searchText" placeholder="Search Tasks ...." />
@@ -93,7 +113,7 @@ const handleUpdate = () => {
         <div class="item">
           <h3 id="item-name">{{ task }}</h3>
           <button @click="updateTask(task)">Update</button>
-          <button @click="deleteTask(task)">Delete</button>
+          <button :disabled="isUpdateItem" @click="deleteTask(task)">Delete</button>
         </div>
       </div>
       <div>Total Tasks: {{ filterList.length }}</div>
