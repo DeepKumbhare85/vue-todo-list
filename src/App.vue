@@ -1,38 +1,23 @@
 <script setup>
 import { ref, watch, computed, watchEffect } from 'vue';
-const taskList = ref(['pineapple', 'banana', 'mango', 'grapes', 'alomonds', 'apple', 'coconut']);
+const taskList = ref(['pineapple', 'banana', 'mango', 'grapes', 'almonds', 'apple', 'coconut']);
 const task = ref('');
-const taskIndex = ref(-1);
+const oldTask = ref('');
 const isUpdateItem = ref(false);
 const inputRef = ref(null);
 const searchText = ref('');
-const filterList = ref(taskList.value);
 const sortOrder = ref('none');
 
-watch([searchText, taskList], () => {
-  console.log('object');
-  filterList.value = [...taskList.value].filter(t => {
+const filterList = computed(() => {
+  return sortList(taskList.value.filter(t => {
     t = t.toLowerCase();
-    return t.indexOf(searchText.value) > -1;
-  })
-}, { deep: true })
-
-
-
-
-// watchEffect(() => {
-//   filterList.value = [...taskList.value].filter(t => {
-//     t = t.toLowerCase();
-//     return t.indexOf(searchText.value.toLowerCase()) > -1;
-//   })
-//   sortList(sortOrder);
-// })
-
-
+    return t.indexOf(searchText.value.toLowerCase()) > -1;
+  }), sortOrder);
+});
 
 const clearTask = () => {
   task.value = '';
-  taskIndex.value = -1;
+  oldTask.value = '';
   isUpdateItem.value = false;
 }
 
@@ -40,7 +25,6 @@ const addTask = () => {
   if (task.value) {
     taskList.value.push(task.value);
     searchText.value = '';
-    sortList(sortOrder.value);
     task.value = '';
   }
   else {
@@ -49,20 +33,22 @@ const addTask = () => {
 }
 
 const deleteTask = (taskToDelete) => {
+  if (oldTask.value === taskToDelete) 
+    clearTask();
   taskList.value = taskList.value.filter(t => t !== taskToDelete)
 }
 
 const updateTask = (updateTask) => {
-  console.log(updateTask)
   isUpdateItem.value = true;
   task.value = updateTask;
-  taskIndex.value = taskList.value.indexOf(updateTask);
+  oldTask.value = updateTask;
   inputRef.value.focus();
 }
 
 const handleUpdate = () => {
-  if (taskList.value[taskIndex.value]) {
-    taskList.value[taskIndex.value] = task.value;
+  let index = taskList.value.indexOf(oldTask.value);
+  if (index > -1) {
+    taskList.value[index] = task.value;
     searchText.value = '';
     clearTask();
   }
@@ -72,17 +58,15 @@ const handleUpdate = () => {
   }
 }
 
-const sortList = (sortOrder) => {
-  if (sortOrder === 'asc') {
-    console.log('called');
-    filterList.value = [...taskList.value].sort();
-    console.log(filterList.value);
-  }
-  if (sortOrder === 'desc') {
-    filterList.value = [...taskList.value].sort().reverse();
-  }
-  if (sortOrder === 'none') {
-    filterList.value = taskList.value;
+
+const sortList = (tempList, sortOrder) => {
+  switch (sortOrder.value) {
+    case 'asc':
+      return tempList.sort();
+    case 'desc':
+      return tempList.sort().reverse();
+    case 'none':
+      return tempList;
   }
 }
 
@@ -92,35 +76,34 @@ const sortList = (sortOrder) => {
 <template>
   <div>
     <h1>To-Do List</h1>
+    <input type="text" id="searchbar" v-model="searchText" placeholder="Search Tasks ...." />
+    <div>
+      Sort Task :
+      <button @click="sortOrder = 'asc'">Asc</button>
+      <button @click="sortOrder = 'desc'">Desc</button>
+      <button @click="sortOrder = 'none'">None</button>
+    </div>
+    <h2>Your Tasks</h2>
     <form @submit.prevent>
       <input v-model="task" type="text" ref="inputRef" />
       <button
         @click="isUpdateItem ? handleUpdate() : addTask()">{{ isUpdateItem ? 'Update Task' : 'Add Task' }}</button>
-      <button v-show="isUpdateItem" @click="clearTask">close</button>
+      <button v-show="isUpdateItem" @click="clearTask">Cancel</button>
     </form>
     <div class="item-list">
-      {{ filterList }}
-      <h2>Your Tasks</h2>
-      <div>
-        Sort Task :
-        <button @click="sortOrder = 'asc'; sortList(sortOrder)">Asc</button>
-        <button @click="sortOrder = 'desc'; sortList(sortOrder)"> Desc </button>
-        <button @click="filterList = taskList"> None </button>
-      </div>
-
-      <input type="text" v-model="searchText" placeholder="Search Tasks ...." />
       <div v-for="(task, index) in filterList" :key="index">
         <div class="item">
           <h3 id="item-name">{{ task }}</h3>
           <button @click="updateTask(task)">Update</button>
-          <button :disabled="isUpdateItem" @click="deleteTask(task)">Delete</button>
+          <button @click="deleteTask(task)">Delete</button>
         </div>
       </div>
       <div>Total Tasks: {{ filterList.length }}</div>
     </div>
   </div>
-
 </template>
+
+
 <style scoped>
 .item-list {
   margin: 2rem 0;
@@ -144,5 +127,14 @@ button {
 
 #item-name {
   margin-right: auto;
+}
+#searchbar{
+  width: 65vw;
+  margin-bottom: .8rem;
+  font-size: x-large;
+  line-height: 2.5rem;
+  border:1px solid black;
+  border-radius: 12px;
+  padding:5px;
 }
 </style>
