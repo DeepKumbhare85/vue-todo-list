@@ -1,7 +1,14 @@
-<script setup>
-import { ref, computed, } from 'vue';
+<script setup lang="ts">
+import { ref, computed, Ref } from 'vue';
 
-const taskList = ref([
+
+interface Task {
+  id: number,
+  title: string,
+  isCompleted: boolean
+}
+
+const taskList = ref<Task[]>([
   { id: 1, title: 'pineapple', isCompleted: true },
   { id: 2, title: 'grapes', isCompleted: false },
   { id: 3, title: 'almonds', isCompleted: true },
@@ -14,32 +21,30 @@ const taskList = ref([
   { id: 10, title: 'apple', isCompleted: false },
   { id: 11, title: 'coconut', isCompleted: true },
 ]);
-const task = ref({ id: -1, title: '', isCompleted: false });
-const items = ref([{name:'Heet',age:21,id:33},{ name: 'Deep', id: 23, age: 21 }]);
+const task = ref<Task>({ id: -1, title: '', isCompleted: false });
 
 const isUpdateItem = ref(false);
-const inputRef = ref(null);
+const inputRef = ref<HTMLInputElement | null>(null);
 
 const searchText = ref('');
-const sortOrder = ref('none');
-const filterStatus = ref('all')
+const sortOrder: Ref<"none" | "asc" | "desc"> = ref("none");
+const filterStatus: Ref<"complete" | "incomplete" | "all"> = ref('all')
 
 const itemPerPage = ref(3);
 const currentPage = ref(1);
 
-
-const filterList = computed(() => {
-  const searchList = taskList.value.filter((t) => {
-    t = t.title.toLowerCase();
-    return t.indexOf(searchText.value.toLowerCase()) > -1;
+const filterList = computed<Task[]>(() => {
+  const searchList = taskList.value.filter(task => {
+    task.title = task.title.toLowerCase();
+    return task.title.indexOf(searchText.value.toLowerCase()) > -1;
   });
 
-  const sortedList = sortList(searchList, sortOrder);
-  return filterTask(sortedList, filterStatus.value);
+  const sortedList = sortList(searchList);
+  return filterTask(sortedList);
 
 });
 
-const paginatedList = computed(() => {
+const paginatedList = computed<Task[]>(() => {
 
   console.log(filterList.value);
   let trimStart = (currentPage.value - 1) * itemPerPage.value;
@@ -48,9 +53,7 @@ const paginatedList = computed(() => {
   return filterList.value.slice(trimStart, trimEnd);
 })
 
-const completedTasks = computed(() => {
-  return taskList.value.filter(t => t.isCompleted);
-})
+const completedTasks = computed<Task[]>(() => taskList.value.filter(t => t.isCompleted));
 
 const clearTask = () => {
   task.value.title = '';
@@ -60,7 +63,7 @@ const clearTask = () => {
 
 const addTask = () => {
   if (task.value.title) {
-    taskList.value.push({ id: taskList.value[taskList.value.length] + 1, title: task.value.title, isCompleted: false });
+    taskList.value.push({ id: taskList.value[taskList.value.length - 1].id + 1, title: task.value.title, isCompleted: false });
     searchText.value = '';
     task.value.title = '';
   }
@@ -69,22 +72,19 @@ const addTask = () => {
   }
 }
 
-const deleteTask = (deleteTaskId) => {
-  if (task.value.id === deleteTaskId) {
+const deleteTask = (deleteTaskId: number) => {
+  if (task.value.id === deleteTaskId)
     clearTask();
-  }
+
   taskList.value = taskList.value.filter(t => t.id !== deleteTaskId);
 }
 
-const updateTask = (updateTaskId) => {
+const updateTask = (updateTaskId: number) => {
   isUpdateItem.value = true;
-
   let taskToUpdate = taskList.value.find(t => t.id === updateTaskId)
-
   task.value.title = taskToUpdate.title;
-  task.value.id = taskToUpdate.id;
-
-  inputRef.value.focus();
+  task.value.id = updateTaskId;
+  inputRef.value?.focus();
 }
 
 const handleUpdate = () => {
@@ -97,20 +97,32 @@ const handleUpdate = () => {
 }
 
 
-const sortList = (list, sortOrder) => {
+const sortList = (list: Task[]) => {
   switch (sortOrder.value) {
     case 'asc':
-      return list.sort((a, b) => (a.title > b.title) ? 1 : ((a.title < b.title) ? -1 : 0));
+      return list.sort((a: Task, b: Task) => {
+        if (a.title > b.title)
+          return 1;
+        if (a.title < b.title)
+          return -1;
+        return 0;
+      })
     case 'desc':
-      return list.sort((a, b) => (b.title > a.title) ? 1 : ((b.title < a.title) ? -1 : 0));
+      return list.sort((a: Task, b: Task) => {
+        if (a.title > b.title)
+          return -1;
+        if (a.title < b.title)
+          return 1;
+        return 0;
+      });
     case 'none':
       return list;
   }
 }
 
-const filterTask = (list, filterStatus) => {
+const filterTask = (list: Task[]) => {
   currentPage.value = 1;
-  switch (filterStatus) {
+  switch (filterStatus.value) {
     case 'complete':
       return list.filter(t => t.isCompleted);
     case 'incomplete':
@@ -120,72 +132,81 @@ const filterTask = (list, filterStatus) => {
   }
 }
 
-const toggleComplete = (toggleId) => {
+const toggleComplete = (toggleId: number) => {
   taskList.value.find(t => t.id === toggleId).isCompleted = !taskList.value.find(t => t.id === toggleId).isCompleted;
 }
-
+const model = ref('');
 
 </script>
 
 <template>
   <div>
     <h1>To-Do List</h1>
-    <input type="text" id="searchbar" v-model="searchText" placeholder="Search Tasks ...." />
-    <div>
+    <v-text-field type="text" hide-details="auto" append-inner-icon="mdi-magnify" v-model="searchText"
+      placeholder="Search Tasks ...." variant="solo" class="my-8"></v-text-field>
+
+    <div class="my-5">
       Sort Task :
-      <button @click="sortOrder = 'asc'">Asc</button>
-      <button @click="sortOrder = 'desc'">Desc</button>
-      <button @click="sortOrder = 'none'">None</button>
+      <v-btn variant="outlined" rounded="lg" :class="sortOrder === 'asc' ? 'active' : ''"
+        @click="sortOrder = 'asc'">Asc</v-btn>
+      <v-btn variant="outlined" rounded="lg" :class="sortOrder === 'desc' ? 'active' : ''"
+        @click="sortOrder = 'desc'">Desc</v-btn>
+      <v-btn variant="outlined" rounded="lg" :class="sortOrder === 'none' ? 'active' : ''"
+        @click="sortOrder = 'none'">None</v-btn>
     </div>
 
-    <div id="filter-task">
-      <h2>Filter Tasks:</h2>
-      <select name="filter-select" id="filter-select" v-model="filterStatus">
-        <option value="all" selected>All Task</option>
-        <option value="complete">Completed Tasks</option>
-        <option value="incomplete">Incomplete Tasks</option>
-      </select>
+    <div class="d-flex justify-center align-center w-75 mx-auto">
+      <h2 class="mb-6 mx-3">Filter Tasks:</h2>
+      <v-select density="comfortable" class="align-self-center" :items="['all', 'complete', 'incomplete']"
+        variant="solo" v-model="filterStatus">
+      </v-select>
     </div>
-    <h2>Your Tasks</h2>
-    <form @submit.prevent>
-      <input v-model="task.title" type="text" ref="inputRef" />
-      <button
-        @click="isUpdateItem ? handleUpdate() : addTask()">{{ isUpdateItem ? 'Update Task' : 'Add Task' }}</button>
-      <button v-show="isUpdateItem" @click="clearTask">Cancel</button>
-    </form>
 
-    <div class="item-list">
-      <div v-for="taskObj in paginatedList" :key="taskObj.id">
-        <div class="item" :class="{ completedTask: taskObj.isCompleted, incompleteTask: !taskObj.isCompleted }">
-          <input type="checkbox" :checked="taskObj.isCompleted" @change="toggleComplete(taskObj.id)" />
-          <h3 class="item-name">{{ taskObj.title }}</h3>
-          <button @click="updateTask(taskObj.id)">Update</button>
-          <button @click="deleteTask(taskObj.id)">Delete</button>
-        </div>
-      </div>
-      <div v-show="!paginatedList.length">No Result Found </div>
-      <div id="pagination">
-        <span v-for="pageNumber in Math.ceil(filterList.length / itemPerPage)">
-          <button :class="{ active: pageNumber === currentPage }" @click="currentPage = pageNumber">
-            {{ pageNumber }}
-          </button>
-        </span>
-      </div>
+    <div class="w-50 mx-auto">
+      <h2 class="mb-3">Your Tasks</h2>
+      <v-form @submit.prevent class="d-flex justify-center align-center">
+        <v-text-field v-model="task.title" type="text" ref="inputRef" class="mt-5 mr-5" variant="solo"
+          placeholder="Add Task..."></v-text-field>
+        <v-btn type="submit" variant="outlined" rounded="lg"
+          @click="isUpdateItem ? handleUpdate() : addTask()">{{ isUpdateItem ? 'Update Task' : 'Add Task' }}</v-btn>
+        <v-btn variant="outlined" v-show="isUpdateItem" rounded="lg" @click="clearTask">Cancel</v-btn>
+      </v-form>
     </div>
-    <div>Total:{{ taskList.length }} completed: {{ completedTasks.length }} incompleteTask:
+
+    <v-list>
+      <v-list-item v-for="taskObj in paginatedList" :key="taskObj.id"
+        :class="{ 'complete-task': taskObj.isCompleted, 'incomplete-task': !taskObj.isCompleted }" rounded="xl">
+        <template v-slot:prepend>
+          <v-list-item-action>
+            <v-checkbox-btn v-model="taskObj.isCompleted"></v-checkbox-btn>
+          </v-list-item-action>
+        </template>
+
+        <v-list-item-title v-text="taskObj.title" class="font-weight-regular text-start"></v-list-item-title>
+
+        <template v-slot:append>
+          <v-btn @click="deleteTask(taskObj.id)" rounded="lg" color="error" prepend-icon="mdi-delete">Delete</v-btn>
+          <v-btn @click="updateTask(taskObj.id)" rounded="lg" color="primary" prepend-icon="mdi-pencil">Update</v-btn>
+        </template>
+        <v-spacer></v-spacer>
+      </v-list-item>
+    </v-list>
+
+    <div class="text-center">
+      <v-pagination v-model="currentPage" class="my-4" :length="Math.ceil(filterList.length / itemPerPage)"
+        :total-visible="5"></v-pagination>
+    </div>
+
+    <p>Total:{{ taskList.length }} completed: {{ completedTasks.length }} incompleteTask:
       {{ taskList.length - completedTasks.length }}
-    </div>
-       
+    </p>
   </div>
+
+
 </template>
 
 
 <style scoped>
-.item-list {
-  margin: 2rem 0;
-  width: 75vw;
-}
-
 .item {
   display: flex;
   align-items: center;
@@ -216,38 +237,25 @@ button {
   padding: 5px;
 }
 
-input[type="checkbox"] {
-  display: inline-block;
-  width: auto;
-  margin: 0;
-}
 
 .active {
-  background-color: #4AAE9B;
+  background-color: #355cdb;
   color: white;
+  border: 2px solid black;
 }
 
-#filter-task {
-  display: flex;
-  justify-content: space-around;
-  align-items: center;
 
+.complete-task {
+  background-color: rgb(121, 212, 117);
 }
 
-#filter-select {
-  display: inline-block;
-  font-size: large;
-  height: 4vh;
-  padding: .2rem .3rem;
-  width: 60vw;
+.v-list-item {
+  margin: 5px 0;
 }
 
-.completedTask {
-  background-color: rgb(74, 231, 153);
-}
+.incomplete-task {
+  color: white;
+  background-color: rgb(204, 72, 72);
 
-.incompleteTask {
-  background-color: rgb(233, 60, 30);
-  color: rgb(239, 241, 234);
 }
 </style>

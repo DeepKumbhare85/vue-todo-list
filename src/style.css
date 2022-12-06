@@ -38,7 +38,7 @@ body {
   display: flex;
   min-width: 320px;
   min-height: 100vh;
-  background-color:#f1e9ff45;
+  background-color:#e2ebcc45;
 }
 
 h1 {
@@ -46,31 +46,12 @@ h1 {
   line-height: 1.1;
 }
 
-button {
-  border-radius: 8px;
-  border: 2px solid rgb(14, 13, 13);
-  padding: 0.5em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
 .card {
   padding: 2em;
 }
 
 #app {
-  max-width: 80vw;
+  width: 80vw;
   margin: 0 auto;
   padding: 2rem;
   text-align: center;
