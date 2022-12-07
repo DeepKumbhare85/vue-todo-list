@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, Ref } from 'vue';
-
+import TaskCompo from './components/TaskCompo.vue';
 
 interface Task {
   id: number,
@@ -32,6 +32,7 @@ const filterStatus: Ref<"complete" | "incomplete" | "all"> = ref('all')
 
 const itemPerPage = ref(3);
 const currentPage = ref(1);
+const snackbar = ref(false);
 
 const filterList = computed<Task[]>(() => {
   const searchList = taskList.value.filter(task => {
@@ -53,7 +54,6 @@ const paginatedList = computed<Task[]>(() => {
   return filterList.value.slice(trimStart, trimEnd);
 })
 
-const completedTasks = computed<Task[]>(() => taskList.value.filter(t => t.isCompleted));
 
 const clearTask = () => {
   task.value.title = '';
@@ -63,16 +63,19 @@ const clearTask = () => {
 
 const addTask = () => {
   if (task.value.title) {
-    taskList.value.push({ id: taskList.value[taskList.value.length - 1].id + 1, title: task.value.title, isCompleted: false });
+    taskList.value.push({ id: taskList.value.length ? taskList.value[taskList.value.length - 1].id + 1 : 1, title: task.value.title, isCompleted: false });
     searchText.value = '';
     task.value.title = '';
   }
   else {
-    alert("task cant be empty");
+    snackbar.value = true;
   }
 }
 
 const deleteTask = (deleteTaskId: number) => {
+  if (paginatedList.value.length === 1 && currentPage.value >= 0)
+    currentPage.value = currentPage.value - 1;
+
   if (task.value.id === deleteTaskId)
     clearTask();
 
@@ -95,7 +98,6 @@ const handleUpdate = () => {
     alert('Your task is already deleted ');
   clearTask();
 }
-
 
 const sortList = (list: Task[]) => {
   switch (sortOrder.value) {
@@ -121,7 +123,6 @@ const sortList = (list: Task[]) => {
 }
 
 const filterTask = (list: Task[]) => {
-  currentPage.value = 1;
   switch (filterStatus.value) {
     case 'complete':
       return list.filter(t => t.isCompleted);
@@ -132,76 +133,114 @@ const filterTask = (list: Task[]) => {
   }
 }
 
-const toggleComplete = (toggleId: number) => {
-  taskList.value.find(t => t.id === toggleId).isCompleted = !taskList.value.find(t => t.id === toggleId).isCompleted;
-}
-const model = ref('');
-
 </script>
 
 <template>
-  <div>
-    <h1>To-Do List</h1>
-    <v-text-field type="text" hide-details="auto" append-inner-icon="mdi-magnify" v-model="searchText"
-      placeholder="Search Tasks ...." variant="solo" class="my-8"></v-text-field>
+  <v-app>
+    <v-main>
+      <div class="ma-5 pa-5">
+        <h1>To-Do List</h1>
+        <v-card>
+          <v-container fluid>
+            <v-row align="start" class="d-flex justify-center align-center">
+              <v-col cols="12" xs="12" sm="12" lg="6">
+                <v-text-field hide-details append-inner-icon="mdi-magnify" v-model="searchText"
+                  placeholder="Search Tasks ...." variant="outlined"></v-text-field>
+              </v-col>
+              <v-col cols="12" xs="12" sm="6" lg="3">
+                <v-select hide-details density="comfortable" label="filter task"
+                  :items="['all', 'complete', 'incomplete']" variant="outlined" v-model="filterStatus">
+                </v-select>
+              </v-col>
+              <v-col cols="12" xs="12" sm="6" lg="3">
+                <p class="d-inline mr-5">Sort : </p>
 
-    <div class="my-5">
-      Sort Task :
-      <v-btn variant="outlined" rounded="lg" :class="sortOrder === 'asc' ? 'active' : ''"
-        @click="sortOrder = 'asc'">Asc</v-btn>
-      <v-btn variant="outlined" rounded="lg" :class="sortOrder === 'desc' ? 'active' : ''"
-        @click="sortOrder = 'desc'">Desc</v-btn>
-      <v-btn variant="outlined" rounded="lg" :class="sortOrder === 'none' ? 'active' : ''"
-        @click="sortOrder = 'none'">None</v-btn>
-    </div>
 
-    <div class="d-flex justify-center align-center w-75 mx-auto">
-      <h2 class="mb-6 mx-3">Filter Tasks:</h2>
-      <v-select density="comfortable" class="align-self-center" :items="['all', 'complete', 'incomplete']"
-        variant="solo" v-model="filterStatus">
-      </v-select>
-    </div>
+                <v-btn-toggle rounded="lg" v-model="sortOrder" color="info" mandatory>
+                  <v-btn class="ma-0" size="small" value="asc">asc</v-btn>
+                  <v-btn class="ma-0" size="small" value="desc">desc</v-btn>
+                  <v-btn class="ma-0" size="small" value="none">none</v-btn>
+                </v-btn-toggle>
+              </v-col>
+            </v-row>
+          </v-container>
+        </v-card>
 
-    <div class="w-50 mx-auto">
-      <h2 class="mb-3">Your Tasks</h2>
-      <v-form @submit.prevent class="d-flex justify-center align-center">
-        <v-text-field v-model="task.title" type="text" ref="inputRef" class="mt-5 mr-5" variant="solo"
-          placeholder="Add Task..."></v-text-field>
-        <v-btn type="submit" variant="outlined" rounded="lg"
-          @click="isUpdateItem ? handleUpdate() : addTask()">{{ isUpdateItem ? 'Update Task' : 'Add Task' }}</v-btn>
-        <v-btn variant="outlined" v-show="isUpdateItem" rounded="lg" @click="clearTask">Cancel</v-btn>
-      </v-form>
-    </div>
+        <v-card class="my-10 pa-5">
+          <h2 class="mb-3">Your Tasks</h2>
+          <v-row>
+            <v-col cols="12" xs="12" md="6"></v-col>
+            <v-col cols="12" xs="12" md="6">
+              <v-form @submit.prevent class="d-flex align-center flex-wrap">
+                <v-text-field hide-details v-model="task.title" type="text" ref="inputRef" variant="outlined"
+                  class="my-input" placeholder="Add Task ..." style="min-width:250px">
+                </v-text-field>
+                <div class="ml-auto">
+                  <v-btn type="submit" rounded="lg"
+                    @click="isUpdateItem ? handleUpdate() : addTask()">{{ isUpdateItem ? 'Update Task' : 'Add Task' }}
+                  </v-btn>
+                  <v-btn v-show="isUpdateItem" rounded="lg" @click="clearTask">Cancel</v-btn>
+                </div>
+              </v-form>
+            </v-col>
+          </v-row>
 
-    <v-list>
-      <v-list-item v-for="taskObj in paginatedList" :key="taskObj.id"
-        :class="{ 'complete-task': taskObj.isCompleted, 'incomplete-task': !taskObj.isCompleted }" rounded="xl">
-        <template v-slot:prepend>
-          <v-list-item-action>
-            <v-checkbox-btn v-model="taskObj.isCompleted"></v-checkbox-btn>
-          </v-list-item-action>
-        </template>
+          <v-list v-show="paginatedList.length">
+            <v-list-subheader>Tasks</v-list-subheader>
+            <v-list-item v-for="taskObj in paginatedList" :key="taskObj.id"
+              :class="{ 'complete-task': taskObj.isCompleted, 'incomplete-task': !taskObj.isCompleted }">
+              <template v-slot:prepend>
+                <v-list-item-action>
+                  <v-checkbox-btn v-model="taskObj.isCompleted"></v-checkbox-btn>
+                </v-list-item-action>
+              </template>
 
-        <v-list-item-title v-text="taskObj.title" class="font-weight-regular text-start"></v-list-item-title>
+              <v-list-item-title v-text="taskObj.title" class="font-weight-regular text-start"></v-list-item-title>
 
-        <template v-slot:append>
-          <v-btn @click="deleteTask(taskObj.id)" rounded="lg" color="error" prepend-icon="mdi-delete">Delete</v-btn>
-          <v-btn @click="updateTask(taskObj.id)" rounded="lg" color="primary" prepend-icon="mdi-pencil">Update</v-btn>
-        </template>
-        <v-spacer></v-spacer>
-      </v-list-item>
-    </v-list>
+              <template v-slot:append>
+                <v-btn @click="deleteTask(taskObj.id)" size="small" variant="text" color="error" icon="mdi-delete"
+                  class="ma-2"></v-btn>
+                <v-btn @click="updateTask(taskObj.id)" size="small" variant="text" color="primary" icon="mdi-pencil"
+                  class="ma-2"></v-btn>
+              </template>
+              <v-spacer></v-spacer>
+            </v-list-item>
+          </v-list>
+          <p v-show="!paginatedList.length" class="my-5">No results found</p>
+          <p class="text-right">total:{{ taskList.length }}</p>
 
-    <div class="text-center">
-      <v-pagination v-model="currentPage" class="my-4" :length="Math.ceil(filterList.length / itemPerPage)"
-        :total-visible="5"></v-pagination>
-    </div>
+          <div class="text-center">
+            <v-pagination v-show="paginatedList.length" size="small" v-model="currentPage" class="my-4"
+              :length="Math.ceil(filterList.length / itemPerPage)" rounded="circle" :total-visible="3"></v-pagination>
+          </div>
+        </v-card>
+      </div>
 
-    <p>Total:{{ taskList.length }} completed: {{ completedTasks.length }} incompleteTask:
-      {{ taskList.length - completedTasks.length }}
-    </p>
-  </div>
+      <div class="text-center">
+        <v-snackbar v-model="snackbar" :timeout="2000" color="error">
+          <p>Task Can't be empty</p>
+          <template v-slot:actions>
+            <v-btn color="white" variant="text" @click="snackbar = false">
+              Close
+            </v-btn>
+          </template>
+        </v-snackbar>
+      </div>
 
+
+      <v-list v-show="paginatedList.length">
+        <TaskCompo :task="taskObj" v-for="taskObj in paginatedList" @delete-task="deleteTask" @update-task="updateTask"/>
+      </v-list>
+      <p v-show="!paginatedList.length" class="my-5">No results found</p>
+      <p class="text-right">total:{{ taskList.length }}</p>
+
+      <div class="text-center">
+        <v-pagination v-show="paginatedList.length" size="small" v-model="currentPage" class="my-4"
+          :length="Math.ceil(filterList.length / itemPerPage)" rounded="circle" :total-visible="4"></v-pagination>
+      </div>
+      
+    </v-main>
+  </v-app>
 
 </template>
 
@@ -246,7 +285,7 @@ button {
 
 
 .complete-task {
-  background-color: rgb(121, 212, 117);
+  background-color: rgb(147, 238, 143);
 }
 
 .v-list-item {
@@ -254,8 +293,7 @@ button {
 }
 
 .incomplete-task {
-  color: white;
-  background-color: rgb(204, 72, 72);
-
+  color: rgb(255, 255, 255);
+  background-color: rgb(233, 154, 154);
 }
 </style>

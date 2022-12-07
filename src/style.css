@@ -39,6 +39,7 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background-color:#e2ebcc45;
+  font-family: 'Inter', sans-serif;
 }
 
 h1 {
@@ -68,8 +69,7 @@ h1 {
   button {
     background-color: #f9f9f9;
   }
-}
-
+} 
 input{
   width: 25vw;
   line-height: 2rem;
