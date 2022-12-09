@@ -2,7 +2,7 @@ import { createApp } from "vue";
 
 import App from "./App.vue";
 
-import { registerPlugins } from "@/plugins";
+import { registerPlugins } from "./plugins";
 
 // import "@mdi/font/css/materialdesignicons.css";
 // import "vuetify/styles";

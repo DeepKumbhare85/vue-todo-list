@@ -35,28 +35,17 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
   min-width: 320px;
   min-height: 100vh;
-  background-color:#e2ebcc45;
   font-family: 'Inter', sans-serif;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-.card {
-  padding: 2em;
-}
-
 #app {
-  width: 80vw;
+
   margin: 0 auto;
-  padding: 2rem;
   text-align: center;
 }
+
 
 @media (prefers-color-scheme: light) {
   :root {
@@ -70,9 +59,3 @@ h1 {
     background-color: #f9f9f9;
   }
 } 
-input{
-  width: 25vw;
-  line-height: 2rem;
-  margin-right: 1.5rem;
-  font-size: larger;
-}
