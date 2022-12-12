@@ -6,13 +6,13 @@
 
 // Styles
 import "@mdi/font/css/materialdesignicons.css";
-import "../main.scss";
+import "vuetify/styles";
 
 import { createVuetify, ThemeDefinition } from "vuetify";
-const myCustomDarkTheme: ThemeDefinition = {
-  dark: true,
+const lightTheme: ThemeDefinition = {
+  dark: false,
   colors: {
-    background: "#b3b3B3",
+    background: "#F8F7FA",
     surface: "#FFFFFF",
     primary: "#6200EE",
     "primary-darken-1": "#3700B3",
@@ -24,7 +24,7 @@ const myCustomDarkTheme: ThemeDefinition = {
     warning: "#FB8C00",
   },
 };
-const customDarkTheme: ThemeDefinition = {
+const darkTheme: ThemeDefinition = {
   dark: true,
   colors: {
     background: "#2f3349",
@@ -43,10 +43,10 @@ const customDarkTheme: ThemeDefinition = {
 // https://vuetifyjs.com/en/introduction/why-vuetify/#feature-guides
 export default createVuetify({
   theme: {
-    defaultTheme: "myCustomDarkTheme",
+    defaultTheme: "lightTheme",
     themes: {
-      myCustomDarkTheme,
-      customDarkTheme,
+      lightTheme,
+      darkTheme,
     },
   },
 });

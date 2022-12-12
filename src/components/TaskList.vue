@@ -4,7 +4,7 @@ import Task from './Task.vue';
 import { Task as TaskInterface } from '../types';
 
 const props = defineProps(['taskList']);
-const emit = defineEmits(['addTask', 'deleteTask', 'updateTask', 'updateTaskStatus']);
+const emit = defineEmits(['addTask', 'deleteTask', 'updateTask']);
 
 const task = ref<TaskInterface>({ id: -1, title: '', isCompleted: false });
 
@@ -12,21 +12,16 @@ const searchText = ref('');
 const sortOrder: Ref<"none" | "asc" | "desc"> = ref("none");
 const filterStatus: Ref<"complete" | "incomplete" | "all"> = ref('all')
 
-
 const isUpdateItem = ref(false);
 const inputRef = ref<HTMLInputElement | null>(null);
 
-
-const itemPerPage = ref(5);
+const itemsPerPage = ref(5);
 const currentPage = ref(1);
-const snackbar = ref(false);
+const isEmptyTaskSnackbarVisible = ref(false);
 
-
-
-const filterList = computed<TaskInterface[]>(() => {
-  const searchList = props.taskList.filter(task => {
-    task.title = task.title.toLowerCase();
-    return task.title.indexOf(searchText.value.toLowerCase()) > -1;
+const filterList = computed(() => {
+  const searchList = props.taskList.filter((task: TaskInterface) => {
+    return task.title.toLowerCase().indexOf(searchText.value.toLowerCase()) > -1;
   });
 
   const sortedList = sortList(searchList);
@@ -34,13 +29,12 @@ const filterList = computed<TaskInterface[]>(() => {
 
 });
 
-const paginatedList = computed<TaskInterface[]>(() => {
+const paginatedList = computed(() => {
 
-  let trimStart = (currentPage.value - 1) * itemPerPage.value;
-  let trimEnd = trimStart + itemPerPage.value;
+  let trimStart = (currentPage.value - 1) * itemsPerPage.value;
+  let trimEnd = trimStart + itemsPerPage.value;
 
   let list = filterList.value.slice(trimStart, trimEnd);
-
 
   return list;
 })
@@ -69,7 +63,7 @@ const filterTask = (list: TaskInterface[]) => {
   }
 }
 
-const updateTask = (updateTaskId: number) => {
+const updateTask = (updateTaskId: TaskInterface['id']) => {
   isUpdateItem.value = true;
   let taskToUpdate = props.taskList.find((t: TaskInterface) => t.id === updateTaskId)
   task.value.title = taskToUpdate.title;
@@ -77,17 +71,15 @@ const updateTask = (updateTaskId: number) => {
   inputRef.value?.focus();
 }
 
-const deleteTask = (id: number) => {
-  console.log(paginatedList.value.length,currentPage.value)
+const deleteTask = (id: TaskInterface['id']) => {
+
   if (paginatedList.value.length === 1 && currentPage.value > 1)
-  currentPage.value = currentPage.value - 1;
-  
+    currentPage.value = currentPage.value - 1;
+
   if (task.value.id === id)
-  clearTask();
-  
+    clearTask();
+
   emit('deleteTask', id);
-
-
 }
 
 const handleUpdate = () => {
@@ -102,27 +94,28 @@ const clearTask = () => {
   isUpdateItem.value = false;
 }
 
-
 </script>
 
 <template>
 
-
-  <VCard class="mx-auto pa-5  ">
+  <VCard class="mx-auto pa-5">
     <VRow align="start" class="d-flex justify-center align-center">
+
       <VCol cols="12" xs="12" sm="12" lg="6">
+
         <VTextField hide-details append-inner-icon="mdi-magnify" v-model="searchText" placeholder="Search Tasks ...."
-          variant="outlined"></VTextField>
+          density="comfortable" variant="outlined">
+        </VTextField>
       </VCol>
 
       <VCol cols="12" xs="12" sm="6" lg="3">
-        <VSelect hide-details label="filter task" :items="['all', 'complete', 'incomplete']"
+        <VSelect hide-details label="filter task" :items="['all', 'complete', 'incomplete']" density="comfortable"
           variant="outlined" v-model="filterStatus">
         </VSelect>
       </VCol>
 
       <VCol cols="12" xs="12" sm="6" lg="3">
-        <VBtnToggle rounded divided variant="outlined" v-model="sortOrder"  mandatory>
+        <VBtnToggle rounded divided variant="outlined" v-model="sortOrder" mandatory>
           <VBtn value="asc">asc</VBtn>
           <VBtn value="desc">desc</VBtn>
           <VBtn value="none">none</VBtn>
@@ -130,9 +123,7 @@ const clearTask = () => {
       </VCol>
 
     </VRow>
-
   </VCard>
-
 
   <VCard class="my-10 pa-5">
     <VRow>
@@ -141,12 +132,12 @@ const clearTask = () => {
         <VForm @submit.prevent class="d-flex align-center flex-gap-2 flex-wrap">
 
           <VTextField hide-details v-model="task.title" type="text" ref="inputRef" variant="outlined"
-            placeholder="Add Task ..." style="min-width:320px">
+            density="comfortable" placeholder="Add Task ..." style="min-width:320px">
           </VTextField>
 
           <div class="ml-auto">
             <VBtn type="submit" class="ma-2" color="primary"
-              @click="isUpdateItem ? handleUpdate() : task.title ? emit('addTask', task) : snackbar = true">
+              @click="isUpdateItem ? handleUpdate() : task.title ? emit('addTask', task) : isEmptyTaskSnackbarVisible = true">
               {{ isUpdateItem ? 'Update Task' : 'Add Task' }}
             </VBtn>
             <VBtn v-show="isUpdateItem" rounded="lg" @click="clearTask">Cancel</VBtn>
@@ -156,36 +147,36 @@ const clearTask = () => {
       </VCol>
     </VRow>
 
-    <VList  v-show="paginatedList.length" class="mt-5" :items='paginatedList'>
+    <VList v-show="paginatedList.length" class="mt-5" :items='paginatedList'>
       <VListSubheader>Tasks</VListSubheader>
-      <Task :task="taskObj" v-for="taskObj in paginatedList" :key="taskObj.id" @delete-task="deleteTask"
-        @update-task="updateTask" @update-task-status="(id) => { emit('updateTaskStatus', id) }" />
+      <div v-for="(taskObj, index) in paginatedList" :key="taskObj.id">
+        <Task :task="taskObj" @delete-task="deleteTask" @update-task="updateTask" />
+        <VDivider v-show="paginatedList.length!==index+1"></VDivider>
+      </div>
     </VList>
 
     <p v-show="!paginatedList.length" class="my-5">No results found</p>
-    <p class="text-right">total:{{ taskList.length }}</p>
+    <p class="text-right text-disabled">total: {{ taskList.length }}</p>
 
     <div class="text-center">
       <VPagination v-show="paginatedList.length" size="small" v-model="currentPage" class="my-4"
-        :length="Math.ceil(filterList.length / itemPerPage)" rounded="circle" :total-visible="4"></VPagination>
+        :length="Math.ceil(filterList.length / itemsPerPage)" rounded="circle" :total-visible="4">
+      </VPagination>
     </div>
   </VCard>
 
   <div class="text-center">
-    <VSnackbar v-model="snackbar" :timeout="2000" color="error">
+    <VSnackbar v-model="isEmptyTaskSnackbarVisible" :timeout="2000" color="error">
       <p>Task Can't be empty</p>
-      <template v-slot:actions>
-        <VBtn color="white" variant="text" @click="snackbar = false">
+      <template #actions>
+        <VBtn color="white" variant="text" @click="isEmptyTaskSnackbarVisible = false">
           Close
         </VBtn>
       </template>
     </VSnackbar>
   </div>
 
-
-
 </template>
-
 
 <style lang="scss" scoped>
 
