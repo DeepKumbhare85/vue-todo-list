@@ -1,80 +1,54 @@
 <script setup lang="ts">
-import { ref, Ref, computed } from 'vue';
+import { ref, Ref, computed,watch } from 'vue';
 import Task from './Task.vue';
 import { Task as TaskInterface } from '../types';
 
-const props = defineProps(['taskList']);
-const emit = defineEmits(['addTask', 'deleteTask', 'updateTask']);
+
+const props = defineProps(['taskList','listlength']);
+const emit = defineEmits(['addTask', 'deleteTask', 'updateTask','toggleStatus','searchList','sortList','filterList','currentPageNumber']);
 
 const task = ref<TaskInterface>({ id: -1, title: '', isCompleted: false });
 
-const searchText = ref('');
+const searchValue = ref('');
 const sortOrder: Ref<"none" | "asc" | "desc"> = ref("none");
 const filterStatus: Ref<"complete" | "incomplete" | "all"> = ref('all')
 
 const isUpdateItem = ref(false);
 const inputRef = ref<HTMLInputElement | null>(null);
 
-const itemsPerPage = ref(5);
 const currentPage = ref(1);
 const isEmptyTaskSnackbarVisible = ref(false);
 
-const filterList = computed(() => {
-  const searchList = props.taskList.filter((task: TaskInterface) => {
-    return task.title.toLowerCase().indexOf(searchText.value.toLowerCase()) > -1;
-  });
-
-  const sortedList = sortList(searchList);
-  return filterTask(sortedList);
-
-});
-
-const paginatedList = computed(() => {
-
-  let trimStart = (currentPage.value - 1) * itemsPerPage.value;
-  let trimEnd = trimStart + itemsPerPage.value;
-
-  let list = filterList.value.slice(trimStart, trimEnd);
-
-  return list;
+watch(filterStatus, () => {
+  currentPage.value = 1;
+  emit('filterList',filterStatus.value)
 })
 
-const sortList = (list: TaskInterface[]) => {
-  switch (sortOrder.value) {
-    case 'asc':
-      return list.sort((a: TaskInterface, b: TaskInterface) => a.title > b.title ? 1 : a.title < b.title ? -1 : 0)
+watch(currentPage, () => {
+  emit('currentPageNumber',currentPage.value)
+})
 
-    case 'desc':
-      return list.sort((a: TaskInterface, b: TaskInterface) => a.title > b.title ? -1 : a.title < b.title ? 1 : 0)
-
-    case 'none':
-      return list;
+const updateTask = (updateTaskId: TaskInterface['id'], event) => {
+  if (event.currentTarget.type === 'checkbox')
+    emit('toggleStatus',updateTaskId)
+  
+  else { 
+    isUpdateItem.value = true;
+    let taskToUpdate = props.taskList.find((t: TaskInterface) => t.id === updateTaskId)
+    console.log(taskToUpdate)
+    task.value.id = updateTaskId;
+    task.value.title = taskToUpdate.title;
+    task.value.isCompleted = taskToUpdate.isCompleted;
+    console.log(task.value)
+    inputRef.value?.focus();
   }
-}
 
-const filterTask = (list: TaskInterface[]) => {
-  switch (filterStatus.value) {
-    case 'complete':
-      return list.filter(t => t.isCompleted);
-    case 'incomplete':
-      return list.filter(t => !t.isCompleted);
-    case 'all':
-      return list;
-  }
-}
-
-const updateTask = (updateTaskId: TaskInterface['id']) => {
-  isUpdateItem.value = true;
-  let taskToUpdate = props.taskList.find((t: TaskInterface) => t.id === updateTaskId)
-  task.value.title = taskToUpdate.title;
-  task.value.id = updateTaskId;
-  inputRef.value?.focus();
 }
 
 const deleteTask = (id: TaskInterface['id']) => {
 
-  if (paginatedList.value.length === 1 && currentPage.value > 1)
-    currentPage.value = currentPage.value - 1;
+  // if (props.taskList.value.length === 1 && currentPage.value > 1)
+  //   currentPage.value = currentPage.value - 1;
 
   if (task.value.id === id)
     clearTask();
@@ -82,10 +56,10 @@ const deleteTask = (id: TaskInterface['id']) => {
   emit('deleteTask', id);
 }
 
-const handleUpdate = () => {
+const handleUpdate =  () => {
   emit('updateTask', task.value);
-  clearTask();
-
+  isUpdateItem.value = false;
+ 
 }
 
 const clearTask = () => {
@@ -100,22 +74,21 @@ const clearTask = () => {
 
   <VCard class="mx-auto pa-5">
     <VRow align="start" class="d-flex justify-center align-center">
-
       <VCol cols="12" xs="12" sm="12" lg="6">
 
-        <VTextField hide-details append-inner-icon="mdi-magnify" v-model="searchText" placeholder="Search Tasks ...."
+        <VTextField hide-details append-inner-icon="mdi-magnify" v-model="searchValue" @input="emit('searchList',searchValue)"  placeholder="Search Tasks ...."
           density="comfortable" variant="outlined">
         </VTextField>
       </VCol>
 
       <VCol cols="12" xs="12" sm="6" lg="3">
-        <VSelect hide-details label="filter task" :items="['all', 'complete', 'incomplete']" density="comfortable"
-          variant="outlined" v-model="filterStatus">
+        <VSelect hide-details label="filter task" :items="['all', 'complete', 'incomplete']" density="comfortable" 
+          variant="outlined" v-model="filterStatus" >
         </VSelect>
       </VCol>
 
-      <VCol cols="12" xs="12" sm="6" lg="3">
-        <VBtnToggle rounded divided variant="outlined" v-model="sortOrder" mandatory>
+      <VCol cols="12" xs="12" sm="6" lg="3" class="text-right text-lg-center">
+        <VBtnToggle @click="emit('sortList',sortOrder)" rounded divided variant="outlined" v-model="sortOrder" mandatory>
           <VBtn value="asc">asc</VBtn>
           <VBtn value="desc">desc</VBtn>
           <VBtn value="none">none</VBtn>
@@ -137,30 +110,30 @@ const clearTask = () => {
 
           <div class="ml-auto">
             <VBtn type="submit" class="ma-2" color="primary"
-              @click="isUpdateItem ? handleUpdate() : task.title ? emit('addTask', task) : isEmptyTaskSnackbarVisible = true">
+              @click="isUpdateItem ? handleUpdate() : task.title.trim() ? emit('addTask', task) : isEmptyTaskSnackbarVisible = true">
               {{ isUpdateItem ? 'Update Task' : 'Add Task' }}
             </VBtn>
-            <VBtn v-show="isUpdateItem" rounded="lg" @click="clearTask">Cancel</VBtn>
+            <VBtn v-show="isUpdateItem" @click="clearTask">Cancel</VBtn>
           </div>
         </VForm>
 
       </VCol>
     </VRow>
-
-    <VList v-show="paginatedList.length" class="mt-5" :items='paginatedList'>
+  
+    <VList v-show="props.taskList.length" class="mt-5" >
       <VListSubheader>Tasks</VListSubheader>
-      <div v-for="(taskObj, index) in paginatedList" :key="taskObj.id">
+      <template v-for="(taskObj, index) in props.taskList" :key="taskObj.id">
         <Task :task="taskObj" @delete-task="deleteTask" @update-task="updateTask" />
-        <VDivider v-show="paginatedList.length!==index+1"></VDivider>
-      </div>
+        <VDivider v-show="props.taskList.length !== (index +1)"></VDivider>
+      </template>
     </VList>
 
-    <p v-show="!paginatedList.length" class="my-5">No results found</p>
-    <p class="text-right text-disabled">total: {{ taskList.length }}</p>
+    <p v-show="!props.taskList.length" class="my-5">No results found</p>
+    <p class="text-right text-disabled">total: {{ props.listlength }}</p>
 
     <div class="text-center">
-      <VPagination v-show="paginatedList.length" size="small" v-model="currentPage" class="my-4"
-        :length="Math.ceil(filterList.length / itemsPerPage)" rounded="circle" :total-visible="4">
+     
+      <VPagination v-show="props.taskList.length" size="small" class="my-4" v-model="currentPage" rounded="circle" :total-visible="5" :length="Math.ceil(props.listlength / 5)" >
       </VPagination>
     </div>
   </VCard>

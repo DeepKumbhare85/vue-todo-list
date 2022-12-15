@@ -31,12 +31,11 @@ const darkTheme: ThemeDefinition = {
     primary: "#7367f0",
     surface: "#1a1a1a",
     "primary-darken-1": "#3700B3",
-    secondary: "#",
     "secondary-darken-1": "#018786",
     error: "#B00020",
-    info: "##00CFE8",
+    info: "#00CFE8",
     success: "#28c76f",
-    warning: "##EA5455",
+    warning: "#EA5455",
   },
 };
 
